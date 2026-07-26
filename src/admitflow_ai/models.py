@@ -18,6 +18,13 @@ class RequirementStatus(str, Enum):
     COMPLETE = "complete"
 
 
+class EssayStatus(str, Enum):
+    OUTLINE = "outline"
+    DRAFTING = "drafting"
+    READY_FOR_REVIEW = "ready_for_review"
+    FINAL = "final"
+
+
 @dataclass(frozen=True)
 class Requirement:
     name: str
@@ -39,6 +46,7 @@ class SchoolApplication:
     portal_url: str
     status: ApplicationStatus
     requirements: tuple[Requirement, ...] = field(default_factory=tuple)
+    supplemental_prompts: tuple[str, ...] = field(default_factory=tuple)
 
     def open_requirements(self) -> tuple[Requirement, ...]:
         return tuple(item for item in self.requirements if not item.is_complete)
@@ -48,6 +56,59 @@ class SchoolApplication:
         if not open_items:
             return None
         return min(open_items, key=lambda item: item.due)
+
+
+@dataclass(frozen=True)
+class EssayVersion:
+    school: str
+    prompt: str
+    version: int
+    updated_on: date
+    word_count: int
+    status: EssayStatus
+    reviewer: str = "student"
+    notes: str = ""
+
+    @property
+    def version_id(self) -> str:
+        prompt_key = self.prompt.lower().replace(" ", "-")
+        return f"{self.school.lower().replace(' ', '-')}/{prompt_key}/v{self.version}"
+
+    def as_row(self) -> dict[str, str | int]:
+        return {
+            "school": self.school,
+            "prompt": self.prompt,
+            "version": self.version,
+            "updated_on": self.updated_on.isoformat(),
+            "word_count": self.word_count,
+            "status": self.status.value,
+            "reviewer": self.reviewer,
+            "version_id": self.version_id,
+        }
+
+
+@dataclass(frozen=True)
+class ChecklistItem:
+    school: str
+    category: str
+    task: str
+    status: RequirementStatus
+    owner: str
+    due: date | None = None
+    source: str = "generated"
+    priority: str = "normal"
+
+    def as_row(self) -> dict[str, str]:
+        return {
+            "school": self.school,
+            "category": self.category,
+            "task": self.task,
+            "status": self.status.value,
+            "owner": self.owner,
+            "due": self.due.isoformat() if self.due else "",
+            "source": self.source,
+            "priority": self.priority,
+        }
 
 
 @dataclass(frozen=True)
